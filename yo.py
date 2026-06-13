@@ -1,16 +1,6 @@
 import streamlit as st
+import cv2
 
-st.title("Test App")
-
-try:
-    import cv2
-    st.success("OpenCV Working")
-except Exception as e:
-    st.error(f"OpenCV Error: {e}")
-
-try:
-    from ultralytics import YOLO
-    st.success("YOLO Working")
-except Exception as e:
-    st.error(f"YOLO Error: {e}")
+st.title("OpenCV Test")
+st.write(cv2.__version__)
 
