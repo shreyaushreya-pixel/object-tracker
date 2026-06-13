@@ -6,7 +6,3 @@ pandas
 pillow
 torch
 torchvision
-streamlit
-ultralytics
-opencv-python-headless
-cv
