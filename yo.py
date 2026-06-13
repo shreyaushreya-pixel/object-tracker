@@ -1001,6 +1001,9 @@ st.write("---")
 
 st.success("✅ Live Vehicle Tracking Active")
 
-
+uploaded_video = st.file_uploader(
+    "Upload Video",
+    type=["mp4", "avi", "mov"]
+)
 
 
