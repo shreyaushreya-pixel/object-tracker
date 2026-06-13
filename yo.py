@@ -1010,5 +1010,198 @@ st.write("---")
 
 st.success("✅ Live Vehicle Tracking Active")
 
+import streamlit as st
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
+from ultralytics import YOLO
+import av
+import cv2
+import numpy as np
+import time
 
+# =====================================================
+# PAGE CONFIG
+# =====================================================
+
+st.set_page_config(
+    page_title="AI Vehicle Monitoring System",
+    page_icon="🚗",
+    layout="wide"
+)
+
+st.title("🚗 AI Vehicle Tracking & Speed Monitoring")
+st.write("Real-Time Vehicle Detection, Tracking and Speed Monitoring")
+
+# =====================================================
+# LOAD YOLO ONCE
+# =====================================================
+
+@st.cache_resource
+def load_model():
+    return YOLO("yolov8n.pt")
+
+model = load_model()
+
+# =====================================================
+# SETTINGS
+# =====================================================
+
+confidence = st.sidebar.slider(
+    "Confidence",
+    0.1,
+    1.0,
+    0.5
+)
+
+speed_limit = st.sidebar.slider(
+    "Speed Limit (km/h)",
+    20,
+    150,
+    60
+)
+
+enable_tracking = st.checkbox("Enable Vehicle Tracking", value=True)
+enable_speed = st.checkbox("Enable Speed Monitoring", value=True)
+
+# =====================================================
+# VIDEO PROCESSOR
+# =====================================================
+
+class VehicleProcessor(VideoProcessorBase):
+
+    def __init__(self):
+        self.prev_time = time.time()
+        self.next_id = 0
+        self.tracked = {}
+
+    def recv(self, frame):
+
+        img = frame.to_ndarray(format="bgr24")
+
+        results = model(img, verbose=False)
+
+        current_time = time.time()
+
+        for box in results[0].boxes:
+
+            cls = int(box.cls[0])
+            conf = float(box.conf[0])
+
+            if conf < confidence:
+                continue
+
+            label = model.names[cls]
+
+            if label not in ["car", "truck", "bus", "motorcycle"]:
+                continue
+
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+
+            center_x = (x1 + x2) // 2
+            center_y = (y1 + y2) // 2
+
+            vehicle_id = None
+
+            if enable_tracking:
+
+                for vid, data in self.tracked.items():
+
+                    px, py = data["center"]
+
+                    dist = np.hypot(
+                        center_x - px,
+                        center_y - py
+                    )
+
+                    if dist < 60:
+                        vehicle_id = vid
+                        break
+
+                if vehicle_id is None:
+                    self.next_id += 1
+                    vehicle_id = self.next_id
+
+                speed = 0
+
+                if vehicle_id in self.tracked:
+
+                    prev_x, prev_y = self.tracked[vehicle_id]["center"]
+                    prev_t = self.tracked[vehicle_id]["time"]
+
+                    dt = current_time - prev_t
+
+                    if dt > 0:
+                        pixel_distance = np.hypot(
+                            center_x - prev_x,
+                            center_y - prev_y
+                        )
+
+                        speed = (pixel_distance / dt) * 0.15
+
+                self.tracked[vehicle_id] = {
+                    "center": (center_x, center_y),
+                    "time": current_time
+                }
+
+            else:
+                speed = 0
+                vehicle_id = 0
+
+            color = (0, 255, 0)
+
+            if enable_speed and speed > speed_limit:
+                color = (0, 0, 255)
+
+            cv2.rectangle(
+                img,
+                (x1, y1),
+                (x2, y2),
+                color,
+                2
+            )
+
+            text = label
+
+            if enable_tracking:
+                text += f" ID:{vehicle_id}"
+
+            if enable_speed:
+                text += f" {int(speed)} km/h"
+
+            cv2.putText(
+                img,
+                text,
+                (x1, y1 - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                color,
+                2
+            )
+
+            cv2.circle(
+                img,
+                (center_x, center_y),
+                4,
+                (255, 0, 0),
+                -1
+            )
+
+        return av.VideoFrame.from_ndarray(
+            img,
+            format="bgr24"
+        )
+
+# =====================================================
+# START STREAM
+# =====================================================
+
+webrtc_streamer(
+    key="vehicle-monitor",
+    video_processor_factory=VehicleProcessor,
+    media_stream_constraints={
+        "video": True,
+        "audio": False
+    }
+)
+
+st.success("✅ System Ready")
 
