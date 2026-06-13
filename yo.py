@@ -1001,9 +1001,11 @@ st.write("---")
 
 st.success("✅ Live Vehicle Tracking Active")
 
-uploaded_video = st.file_uploader(
-    "Upload Video",
-    type=["mp4", "avi", "mov"]
-)
+img_file = st.camera_input("Take a picture")
+
+if img_file is not None:
+    image = Image.open(img_file)
+    results = model(np.array(image))
+    st.image(results[0].plot())
 
 
