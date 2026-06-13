@@ -4,7 +4,6 @@ ultralytics
 opencv-python-headless
 numpy
 pandas
-pillow
 av
 torch
 torchvision
