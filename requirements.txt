@@ -1,12 +1,10 @@
 streamlit
+streamlit-webrtc
 ultralytics
 opencv-python-headless
 numpy
 pandas
 pillow
+av
 torch
 torchvision
-streamlit
-streamlit-webrtc
-opencv-python-headless
-av
